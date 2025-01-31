@@ -2,20 +2,18 @@
 • database, schema and warehouse creation
 --*/
 
--- create {{__database}} database
-CREATE DATABASE IF NOT EXISTS  {{__database}};
 
 -- create raw_pos schema
-CREATE OR REPLACE SCHEMA {{__database}}.raw_pos;
+CREATE OR REPLACE SCHEMA raw_pos;
 
 -- create raw_customer schema
-CREATE OR REPLACE SCHEMA {{__database}}.raw_support;
+CREATE OR REPLACE SCHEMA raw_support;
 
 -- create harmonized schema
-CREATE OR REPLACE SCHEMA {{__database}}.harmonized;
+CREATE OR REPLACE SCHEMA harmonized;
 
 -- create analytics schema
-CREATE OR REPLACE SCHEMA {{__database}}.analytics;
+CREATE OR REPLACE SCHEMA analytics;
 
 -- create tasty_ds_wh warehouse
 CREATE OR REPLACE WAREHOUSE tasty_ds_wh
@@ -33,20 +31,20 @@ USE WAREHOUSE tasty_ds_wh;
 • file format and stage creation
 --*/
 
-CREATE OR REPLACE FILE FORMAT {{__database}}.public.csv_ff 
+CREATE OR REPLACE FILE FORMAT public.csv_ff 
 TYPE = 'csv';
 
-CREATE OR REPLACE STAGE {{__database}}.public.s3load
+CREATE OR REPLACE STAGE public.s3load
     COMMENT = 'Quickstarts S3 Stage Connection'
     URL = 's3://sfquickstarts/tastybytes-voc/'
-    FILE_FORMAT = {{__database}}.public.csv_ff;
+    FILE_FORMAT = public.csv_ff;
 
 /*--
 raw zone table build 
 --*/
 
 -- menu table build
-CREATE OR REPLACE TABLE {{__database}}.raw_pos.menu
+CREATE OR REPLACE TABLE raw_pos.menu
 (
     menu_id NUMBER(19,0),
     menu_type_id NUMBER(38,0),
@@ -62,7 +60,7 @@ CREATE OR REPLACE TABLE {{__database}}.raw_pos.menu
 );
 
 -- truck table build 
-CREATE OR REPLACE TABLE {{__database}}.raw_pos.truck
+CREATE OR REPLACE TABLE raw_pos.truck
 (
     truck_id NUMBER(38,0),
     menu_type_id NUMBER(38,0),
@@ -81,7 +79,7 @@ CREATE OR REPLACE TABLE {{__database}}.raw_pos.truck
 );
 
 -- order_header table build
-CREATE OR REPLACE TABLE {{__database}}.raw_pos.order_header
+CREATE OR REPLACE TABLE raw_pos.order_header
 (
     order_id NUMBER(38,0),
     truck_id NUMBER(38,0),
@@ -102,7 +100,7 @@ CREATE OR REPLACE TABLE {{__database}}.raw_pos.order_header
 );
 
 -- truck_reviews table build
-CREATE OR REPLACE TABLE {{__database}}.raw_support.truck_reviews
+CREATE OR REPLACE TABLE raw_support.truck_reviews
 (
     order_id NUMBER(38,0),
     language VARCHAR(16777216),
@@ -116,7 +114,7 @@ CREATE OR REPLACE TABLE {{__database}}.raw_support.truck_reviews
 --*/
 
 -- truck_reviews_v view
-CREATE OR REPLACE VIEW {{__database}}.harmonized.truck_reviews_v
+CREATE OR REPLACE VIEW harmonized.truck_reviews_v
     AS
 SELECT DISTINCT
     r.review_id,
@@ -129,12 +127,12 @@ SELECT DISTINCT
     oh.customer_id,
     TO_DATE(oh.order_ts) AS date,
     m.truck_brand_name
-FROM {{__database}}.raw_support.truck_reviews r
-JOIN {{__database}}.raw_pos.order_header oh
+FROM raw_support.truck_reviews r
+JOIN raw_pos.order_header oh
     ON oh.order_id = r.order_id
-JOIN {{__database}}.raw_pos.truck t
+JOIN raw_pos.truck t
     ON t.truck_id = oh.truck_id
-JOIN {{__database}}.raw_pos.menu m
+JOIN raw_pos.menu m
     ON m.menu_type_id = t.menu_type_id;
 
 /*--
@@ -142,7 +140,7 @@ JOIN {{__database}}.raw_pos.menu m
 --*/
 
 -- truck_reviews_v view
-CREATE OR REPLACE VIEW {{__database}}.analytics.truck_reviews_v
+CREATE OR REPLACE VIEW analytics.truck_reviews_v
     AS
 SELECT * FROM harmonized.truck_reviews_v;
 
@@ -153,20 +151,20 @@ raw zone table load
 
 
 -- menu table load
-COPY INTO {{__database}}.raw_pos.menu
-FROM @{{__database}}.public.s3load/raw_pos/menu/;
+COPY INTO raw_pos.menu
+FROM @public.s3load/raw_pos/menu/;
 
 -- truck table load
-COPY INTO {{__database}}.raw_pos.truck
-FROM @{{__database}}.public.s3load/raw_pos/truck/;
+COPY INTO raw_pos.truck
+FROM @public.s3load/raw_pos/truck/;
 
 -- order_header table load
-COPY INTO {{__database}}.raw_pos.order_header
-FROM @{{__database}}.public.s3load/raw_pos/order_header/;
+COPY INTO raw_pos.order_header
+FROM @public.s3load/raw_pos/order_header/;
 
 -- truck_reviews table load
-COPY INTO {{__database}}.raw_support.truck_reviews
-FROM @{{__database}}.public.s3load/raw_support/truck_reviews/;
+COPY INTO raw_support.truck_reviews
+FROM @public.s3load/raw_support/truck_reviews/;
 
 
 -- scale wh to medium
