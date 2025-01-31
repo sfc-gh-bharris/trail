@@ -1,19 +1,23 @@
+--!jinja
+
 /*--
 • database, schema and warehouse creation
 --*/
 
+-- create {{demo_database}} database
+CREATE DATABASE IF NOT EXISTS  {{demo_database}};
 
 -- create raw_pos schema
-CREATE OR REPLACE SCHEMA raw_pos;
+CREATE OR REPLACE SCHEMA {{demo_database}}.raw_pos;
 
 -- create raw_customer schema
-CREATE OR REPLACE SCHEMA raw_support;
+CREATE OR REPLACE SCHEMA {{demo_database}}.raw_support;
 
 -- create harmonized schema
-CREATE OR REPLACE SCHEMA harmonized;
+CREATE OR REPLACE SCHEMA {{demo_database}}.harmonized;
 
 -- create analytics schema
-CREATE OR REPLACE SCHEMA analytics;
+CREATE OR REPLACE SCHEMA {{demo_database}}.analytics;
 
 -- create tasty_ds_wh warehouse
 CREATE OR REPLACE WAREHOUSE tasty_ds_wh
@@ -31,20 +35,20 @@ USE WAREHOUSE tasty_ds_wh;
 • file format and stage creation
 --*/
 
-CREATE OR REPLACE FILE FORMAT public.csv_ff 
+CREATE OR REPLACE FILE FORMAT {{demo_database}}.public.csv_ff 
 TYPE = 'csv';
 
-CREATE OR REPLACE STAGE public.s3load
+CREATE OR REPLACE STAGE {{demo_database}}.public.s3load
     COMMENT = 'Quickstarts S3 Stage Connection'
     URL = 's3://sfquickstarts/tastybytes-voc/'
-    FILE_FORMAT = public.csv_ff;
+    FILE_FORMAT = {{demo_database}}.public.csv_ff;
 
 /*--
 raw zone table build 
 --*/
 
 -- menu table build
-CREATE OR REPLACE TABLE raw_pos.menu
+CREATE OR REPLACE TABLE {{demo_database}}.raw_pos.menu
 (
     menu_id NUMBER(19,0),
     menu_type_id NUMBER(38,0),
@@ -60,7 +64,7 @@ CREATE OR REPLACE TABLE raw_pos.menu
 );
 
 -- truck table build 
-CREATE OR REPLACE TABLE raw_pos.truck
+CREATE OR REPLACE TABLE {{demo_database}}.raw_pos.truck
 (
     truck_id NUMBER(38,0),
     menu_type_id NUMBER(38,0),
@@ -79,7 +83,7 @@ CREATE OR REPLACE TABLE raw_pos.truck
 );
 
 -- order_header table build
-CREATE OR REPLACE TABLE raw_pos.order_header
+CREATE OR REPLACE TABLE {{demo_database}}.raw_pos.order_header
 (
     order_id NUMBER(38,0),
     truck_id NUMBER(38,0),
@@ -100,7 +104,7 @@ CREATE OR REPLACE TABLE raw_pos.order_header
 );
 
 -- truck_reviews table build
-CREATE OR REPLACE TABLE raw_support.truck_reviews
+CREATE OR REPLACE TABLE {{demo_database}}.raw_support.truck_reviews
 (
     order_id NUMBER(38,0),
     language VARCHAR(16777216),
@@ -114,7 +118,7 @@ CREATE OR REPLACE TABLE raw_support.truck_reviews
 --*/
 
 -- truck_reviews_v view
-CREATE OR REPLACE VIEW harmonized.truck_reviews_v
+CREATE OR REPLACE VIEW {{demo_database}}.harmonized.truck_reviews_v
     AS
 SELECT DISTINCT
     r.review_id,
@@ -127,12 +131,12 @@ SELECT DISTINCT
     oh.customer_id,
     TO_DATE(oh.order_ts) AS date,
     m.truck_brand_name
-FROM raw_support.truck_reviews r
-JOIN raw_pos.order_header oh
+FROM {{demo_database}}.raw_support.truck_reviews r
+JOIN {{demo_database}}.raw_pos.order_header oh
     ON oh.order_id = r.order_id
-JOIN raw_pos.truck t
+JOIN {{demo_database}}.raw_pos.truck t
     ON t.truck_id = oh.truck_id
-JOIN raw_pos.menu m
+JOIN {{demo_database}}.raw_pos.menu m
     ON m.menu_type_id = t.menu_type_id;
 
 /*--
@@ -140,7 +144,7 @@ JOIN raw_pos.menu m
 --*/
 
 -- truck_reviews_v view
-CREATE OR REPLACE VIEW analytics.truck_reviews_v
+CREATE OR REPLACE VIEW {{demo_database}}.analytics.truck_reviews_v
     AS
 SELECT * FROM harmonized.truck_reviews_v;
 
@@ -151,20 +155,20 @@ raw zone table load
 
 
 -- menu table load
-COPY INTO raw_pos.menu
-FROM @public.s3load/raw_pos/menu/;
+COPY INTO {{demo_database}}.raw_pos.menu
+FROM @{{demo_database}}.public.s3load/raw_pos/menu/;
 
 -- truck table load
-COPY INTO raw_pos.truck
-FROM @public.s3load/raw_pos/truck/;
+COPY INTO {{demo_database}}.raw_pos.truck
+FROM @{{demo_database}}.public.s3load/raw_pos/truck/;
 
 -- order_header table load
-COPY INTO raw_pos.order_header
-FROM @public.s3load/raw_pos/order_header/;
+COPY INTO {{demo_database}}.raw_pos.order_header
+FROM @{{demo_database}}.public.s3load/raw_pos/order_header/;
 
 -- truck_reviews table load
-COPY INTO raw_support.truck_reviews
-FROM @public.s3load/raw_support/truck_reviews/;
+COPY INTO {{demo_database}}.raw_support.truck_reviews
+FROM @{{demo_database}}.public.s3load/raw_support/truck_reviews/;
 
 
 -- scale wh to medium
